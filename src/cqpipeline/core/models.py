@@ -9,6 +9,7 @@ a `PipelineReport` with a final `Verdict`.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import hashlib
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -43,7 +44,27 @@ class Finding(BaseModel):
     cwe_id: str = Field(default="", description="CWE identifier if applicable")
     cvss_score: float | None = Field(default=None, description="CVSS score for CVEs")
     cve_id: str = Field(default="", description="CVE identifier if applicable")
+    fingerprint: str = Field(default="", description="Stable fingerprint for dedupe/baseline tracking")
+    baseline_state: str = Field(default="new", description="new, existing, or ignored relative to baseline")
     metadata: dict = Field(default_factory=dict, description="Additional scanner-specific data")
+
+    def ensure_fingerprint(self) -> str:
+        """Compute a stable fingerprint for the same finding across runs."""
+        if self.fingerprint:
+            return self.fingerprint
+        normalized = "|".join([
+            str(self.scanner or ""),
+            str(self.category.value if hasattr(self.category, "value") else self.category),
+            str(self.rule_id or ""),
+            str(self.cve_id or ""),
+            str(self.file_path or ""),
+            str(self.line_number or 0),
+            str(self.title or ""),
+            str(self.metadata.get("package", "")),
+            str(self.metadata.get("installed_version", "")),
+        ]).lower().strip()
+        self.fingerprint = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:32]
+        return self.fingerprint
 
     model_config = {"ser_json_bytes": "utf8"}
 
@@ -151,6 +172,8 @@ class PipelineReport(BaseModel):
         self.files_scanned = 0
 
         for result in self.scan_results:
+            for finding in result.findings:
+                finding.ensure_fingerprint()
             self.total_findings += result.finding_count
             self.critical_count += result.critical_count
             self.high_count += result.high_count

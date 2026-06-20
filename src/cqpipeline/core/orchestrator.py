@@ -26,6 +26,7 @@ from cqpipeline.core.models import PipelineReport, ScanResult
 from cqpipeline.gates.evaluator import QualityGateEvaluator
 from cqpipeline.git.utils import get_git_metadata, get_staged_files
 from cqpipeline.scanners.base import BaseScanner
+from cqpipeline.scanners.compiler_scanner import CompilerScanner
 from cqpipeline.scanners.dependency_scanner import DependencyScanner
 from cqpipeline.scanners.file_scanner import FileScanner
 from cqpipeline.scanners.lint_scanner import LintScanner
@@ -52,6 +53,7 @@ SCANNER_REGISTRY: dict[str, type[BaseScanner]] = {
     "quality": QualityScanner,
     "files": FileScanner,
     "type_checking": TypeChecker,
+    "compiler": CompilerScanner,
 }
 
 

@@ -15,10 +15,12 @@ from pathlib import Path
 
 import click
 
+from cqpipeline.core.baseline import DEFAULT_BASELINE_FILE, FindingBaseline
 from cqpipeline.core.constants import ExitCode, ScanMode, Verdict
 from cqpipeline.core.orchestrator import run_pipeline_sync
 from cqpipeline.reporters.html_reporter import HTMLReporter
 from cqpipeline.reporters.json_reporter import JSONReporter
+from cqpipeline.reporters.sarif_reporter import SARIFReporter
 from cqpipeline.reporters.terminal_reporter import TerminalReporter
 from cqpipeline.utils.logger import get_logger, setup_logging
 
@@ -35,13 +37,16 @@ def cli() -> None:
 @click.option("--staged", is_flag=True, default=False, help="Scan only staged files (pre-commit)")
 @click.option("--all", "scan_all", is_flag=True, default=False, help="Scan entire project")
 @click.option("--files", multiple=True, help="Scan specific files")
-@click.option("--format", "output_format", type=click.Choice(["terminal", "json", "html", "all"]),
+@click.option("--format", "output_format", type=click.Choice(["terminal", "json", "html", "sarif", "all"]),
               default="terminal", help="Output format")
 @click.option("--config", "config_path", default=None, help="Path to pipeline config")
 @click.option("--gates", "gates_path", default=None, help="Path to quality gates config")
 @click.option("--project", "project_root", default=None, help="Project root directory")
 @click.option("--log-level", default="INFO", help="Log level (DEBUG/INFO/WARNING/ERROR)")
 @click.option("--json-log", is_flag=True, default=False, help="Output logs as JSON (for CI/CD)")
+@click.option("--baseline", "baseline_path", default=None, help="Path to .cq-baseline.json for existing findings")
+@click.option("--suppress-baseline", is_flag=True, default=False, help="Suppress baseline findings from the gate/report")
+@click.option("--update-baseline", is_flag=True, default=False, help="Write/update baseline from current findings after the scan")
 def scan(
     staged: bool,
     scan_all: bool,
@@ -52,6 +57,9 @@ def scan(
     project_root: str | None,
     log_level: str,
     json_log: bool,
+    baseline_path: str | None,
+    suppress_baseline: bool,
+    update_baseline: bool,
 ) -> None:
     """Run the security and quality pipeline scan."""
     setup_logging(level=log_level, json_format=json_log)
@@ -79,6 +87,14 @@ def scan(
             gates_path=gates_path,
         )
 
+        baseline_file = Path(baseline_path) if baseline_path else root / DEFAULT_BASELINE_FILE
+        if baseline_file.exists():
+            FindingBaseline(baseline_file).load().apply(report, suppress_existing=suppress_baseline)
+
+        if update_baseline:
+            FindingBaseline.write_from_report(report, baseline_file)
+            click.echo(f"🧭 Baseline updated: {baseline_file}", err=True)
+
         # Generate reports
         if output_format in ("terminal", "all"):
             terminal_reporter = TerminalReporter()
@@ -98,6 +114,13 @@ def scan(
             html_path = root / "reports" / f"scan_{timestamp}.html"
             html_reporter.generate(report, output_path=html_path)
             click.echo(f"📄 HTML report: {html_path}", err=True)
+
+        if output_format in ("sarif", "all"):
+            sarif_reporter = SARIFReporter()
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            sarif_path = root / "reports" / f"scan_{timestamp}.sarif"
+            sarif_reporter.generate(report, output_path=sarif_path)
+            click.echo(f"📄 SARIF report: {sarif_path}", err=True)
 
         # Exit based on verdict
         if report.verdict == Verdict.FAIL:

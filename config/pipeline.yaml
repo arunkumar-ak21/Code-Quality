@@ -105,6 +105,19 @@ scanners:
         enabled: true
         strict: false
 
+  compiler:
+    enabled: true
+    timeout: 120
+    tools:
+      python_compile:
+        enabled: true
+      node_build:
+        enabled: true
+      go_test:
+        enabled: true
+      java_build:
+        enabled: true
+
 # ─── Language Detection ──────────────────────────────────────────────
 # Which file extensions to scan per language.
 

@@ -80,6 +80,7 @@ class ScannerCategory(str, Enum):
     QUALITY = "quality"
     FILES = "files"
     TYPE_CHECKING = "type_checking"
+    COMPILER = "compiler"
 
 
 class GateAction(str, Enum):

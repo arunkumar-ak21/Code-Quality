@@ -72,9 +72,10 @@ class DependencyScanner(BaseScanner):
         all_findings: list[Finding] = []
         tools_config = self.config.get("tools", {})
         requirements_files = self._discover_requirements_files()
+        node_package_locks = self._discover_node_package_locks()
 
-        if not requirements_files:
-            logger.info("No Python requirements files found for dependency scanning")
+        if not requirements_files and not node_package_locks:
+            logger.info("No supported dependency manifests found for dependency scanning")
             return ScanResult(
                 scanner_name=self.name,
                 category=self.category,
@@ -106,6 +107,12 @@ class DependencyScanner(BaseScanner):
             else:
                 logger.warning("Safety not installed — skipping secondary dependency scan")
 
+        if node_package_locks and tools_config.get("npm_audit", {}).get("enabled", True):
+            if check_tool_available("npm"):
+                all_findings.extend(await self._run_npm_audit(node_package_locks))
+            else:
+                logger.warning("npm not installed — skipping npm audit")
+
         all_findings = self._deduplicate(all_findings)
 
         return ScanResult(
@@ -132,6 +139,16 @@ class DependencyScanner(BaseScanner):
         except ValueError:
             parts = path.parts
         return any(part in IGNORED_DIRS for part in parts)
+
+
+    def _discover_node_package_locks(self) -> list[Path]:
+        """Find npm lockfiles throughout the target repository."""
+        candidates: list[Path] = []
+        for pattern in ("package-lock.json", "npm-shrinkwrap.json"):
+            for path in self.project_root.rglob(pattern):
+                if path.is_file() and not self._is_ignored_path(path):
+                    candidates.append(path)
+        return sorted(candidates, key=lambda item: item.relative_to(self.project_root).as_posix())
 
     async def _run_pip_audit(self, requirements_files: list[Path]) -> list[Finding]:
         """Run pip-audit against every discovered requirements file."""
@@ -336,6 +353,67 @@ class DependencyScanner(BaseScanner):
             )
 
         return None
+
+    async def _run_npm_audit(self, lockfiles: list[Path]) -> list[Finding]:
+        """Run npm audit for projects that have package-lock.json."""
+        findings: list[Finding] = []
+        for lockfile in lockfiles:
+            rel_path = get_relative_path(lockfile, self.project_root)
+            cwd = lockfile.parent
+            result = await run_process(
+                ["npm", "audit", "--json", "--audit-level=low"],
+                cwd=cwd,
+                timeout=self.config.get("timeout", 60),
+                scanner_name="npm-audit",
+            )
+            if not result.stdout.strip():
+                if result.exit_code != 0:
+                    findings.append(Finding(
+                        scanner="npm-audit",
+                        category=ScannerCategory.DEPENDENCIES,
+                        severity=Severity.HIGH,
+                        rule_id="NPM-AUDIT-FAILED",
+                        title="npm audit failed",
+                        message=((result.stderr or result.stdout or "npm audit failed without JSON output").strip())[:1000],
+                        file_path=rel_path,
+                        suggestion="Ensure package.json/package-lock.json are valid and run npm audit locally.",
+                    ))
+                continue
+            try:
+                output = json.loads(result.stdout)
+            except json.JSONDecodeError:
+                continue
+            vulnerabilities = output.get("vulnerabilities") if isinstance(output, dict) else None
+            if not isinstance(vulnerabilities, dict):
+                continue
+            for package_name, vuln in vulnerabilities.items():
+                via = vuln.get("via") or []
+                severity = self._map_severity(str(vuln.get("severity") or "high"))
+                title = f"Vulnerable npm dependency: {package_name}"
+                messages = []
+                advisory_ids = []
+                for item in via:
+                    if isinstance(item, dict):
+                        advisory_ids.append(str(item.get("source") or item.get("url") or item.get("title") or "NPM-AUDIT"))
+                        messages.append(str(item.get("title") or item.get("url") or "npm advisory"))
+                    else:
+                        messages.append(str(item))
+                findings.append(Finding(
+                    scanner="npm-audit",
+                    category=ScannerCategory.DEPENDENCIES,
+                    severity=severity,
+                    rule_id=advisory_ids[0] if advisory_ids else "NPM-AUDIT-VULN",
+                    title=title,
+                    message="; ".join(messages)[:2000] or title,
+                    file_path=rel_path,
+                    suggestion=str(vuln.get("fixAvailable") or "Run npm audit fix or upgrade the affected package."),
+                    metadata={
+                        "package": package_name,
+                        "installed_version": str(vuln.get("range") or ""),
+                        "lockfile": rel_path,
+                    },
+                ))
+        return findings
 
     def _tool_missing_finding(self, tool_name: str, message: str) -> Finding:
         return Finding(

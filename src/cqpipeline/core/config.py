@@ -224,6 +224,23 @@ class PipelineConfigLoader:
                 "quality": {"enabled": True, "timeout": 30},
                 "files": {"enabled": True, "timeout": 10},
                 "type_checking": {"enabled": False, "timeout": 60},
+                "compiler": {"enabled": True, "timeout": 120},
+            },
+            "quality_gates": {
+                "severity_actions": {
+                    "critical": "block",
+                    "high": "block",
+                    "medium": "warn",
+                    "low": "info",
+                    "info": "ignore",
+                },
+                "max_findings": {
+                    "critical": 0,
+                    "high": 0,
+                    "medium": 20,
+                    "low": -1,
+                    "total": 50,
+                },
             },
         }
 
