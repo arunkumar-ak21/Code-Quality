@@ -1,0 +1,51 @@
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CQ Pipeline — GitHub Actions: Weekly Full Audit
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+name: "📊 Weekly Full Security Audit"
+
+on:
+  schedule:
+    - cron: "0 2 * * 1"  # Every Monday at 2 AM UTC
+  workflow_dispatch:       # Allow manual trigger
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  full-audit:
+    name: "🔍 Full Security Audit"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for TruffleHog
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install CQ Pipeline
+        run: pip install -e ".[scanners]"
+
+      - name: Install external tools
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.22.1/gitleaks_8.22.1_linux_x64.tar.gz \
+            | tar -xz -C /usr/local/bin/ gitleaks
+          pip install semgrep trufflehog
+
+      - name: Run Full Audit
+        run: |
+          # Enable TruffleHog for history scan
+          export CQ_SCANNERS__SECRETS__TOOLS__TRUFFLEHOG__ENABLED=true
+          cq-pipeline scan --all --format all
+
+      - name: Upload Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: full-audit-report
+          path: reports/
+          retention-days: 90

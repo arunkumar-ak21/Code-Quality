@@ -1,0 +1,43 @@
+# Python Language Profile
+language: python
+extensions: [".py", ".pyw", ".pyi"]
+
+linters:
+  ruff:
+    enabled: true
+    args: ["check", "--output-format", "json"]
+  black:
+    enabled: true
+    args: ["--check", "--diff", "--quiet"]
+  pylint:
+    enabled: true
+    args: ["--output-format=json"]
+  flake8:
+    enabled: false
+    args: ["--format=json"]
+
+sast:
+  bandit:
+    enabled: true
+    args: ["-f", "json", "--severity-level", "medium", "--confidence-level", "medium"]
+  semgrep:
+    enabled: true
+    config: "p/python"
+
+type_checking:
+  mypy:
+    enabled: true
+    args: ["--no-error-summary"]
+
+quality:
+  radon:
+    enabled: true
+    complexity_threshold: "C"  # A, B, C, D, E, F
+
+debug_patterns:
+  - 'print\s*\('
+  - 'pdb\.set_trace\s*\('
+  - 'breakpoint\s*\('
+  - 'import\s+pdb'
+  - 'import\s+ipdb'
+  - 'logging\.debug\s*\('

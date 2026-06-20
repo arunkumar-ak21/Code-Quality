@@ -1,0 +1,23 @@
+# JavaScript/TypeScript Language Profile
+language: javascript
+extensions: [".js", ".jsx", ".mjs", ".ts", ".tsx"]
+
+linters:
+  eslint:
+    enabled: true
+    args: ["--format", "json"]
+  prettier:
+    enabled: true
+    args: ["--check"]
+
+sast:
+  semgrep:
+    enabled: true
+    config: "p/javascript"
+
+debug_patterns:
+  - 'console\.log\s*\('
+  - 'console\.debug\s*\('
+  - 'console\.warn\s*\('
+  - 'debugger'
+  - 'alert\s*\('

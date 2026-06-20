@@ -1,0 +1,29 @@
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CQ Pipeline — FastAPI Dashboard Docker Image
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FROM python:3.11-slim
+
+RUN groupadd -r cqapi && useradd -r -g cqapi -m cqapi
+
+WORKDIR /app
+
+COPY pyproject.toml .
+RUN pip install --no-cache-dir ".[api]"
+
+COPY api/ api/
+COPY src/ src/
+RUN pip install --no-cache-dir -e .
+
+USER cqapi
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD python -c "import httpx; httpx.get('http://localhost:8000/api/v1/metrics/health')" || exit 1
+
+CMD ["gunicorn", "api.main:app", \
+     "-w", "4", \
+     "-k", "uvicorn.workers.UvicornWorker", \
+     "--bind", "0.0.0.0:8000", \
+     "--access-logfile", "-"]

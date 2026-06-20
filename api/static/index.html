@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CQ Pipeline Dashboard</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Icons (Lucide) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div id="app" class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar glass-panel">
+            <div class="brand">
+                <i data-lucide="shield-check" class="brand-icon text-cyan"></i>
+                <h1>CQ Pipeline</h1>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="#/" class="nav-link" id="nav-dashboard">
+                    <i data-lucide="layout-dashboard"></i> Dashboard
+                </a>
+                <a href="#/scans" class="nav-link" id="nav-scans">
+                    <i data-lucide="list"></i> Scan History
+                </a>
+                <div class="nav-divider"></div>
+                <a href="http://localhost:8050/docs" target="_blank" class="nav-link">
+                    <i data-lucide="braces"></i> API Reference
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="top-header glass-panel">
+                <h2 id="page-title">Overview</h2>
+                <div class="header-actions">
+                    <span class="status-badge pulse">
+                        <span class="status-dot healthy"></span>
+                        System Online
+                    </span>
+                </div>
+            </header>
+
+            <div id="router-view" class="view-container">
+                <!-- Content injected via JS -->
+                <div class="loader-container">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- SPA Logic -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

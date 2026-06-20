@@ -1,0 +1,70 @@
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CQ Pipeline — GitLab CI Pipeline
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+image: python:3.11-slim
+
+stages:
+  - scan
+  - report
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.pip-cache"
+
+cache:
+  paths:
+    - .pip-cache/
+
+before_script:
+  - apt-get update && apt-get install -y --no-install-recommends git curl
+  - pip install -e ".[scanners]"
+  - |
+    curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.22.1/gitleaks_8.22.1_linux_x64.tar.gz \
+      | tar -xz -C /usr/local/bin/ gitleaks
+
+# ─── Secret Scan ─────────────────────────────────────────────────
+secret-scan:
+  stage: scan
+  script:
+    - gitleaks detect --source . --report-format json --report-path reports/gitleaks.json --no-git || true
+  artifacts:
+    paths:
+      - reports/gitleaks.json
+    expire_in: 30 days
+  allow_failure: false
+
+# ─── Full Pipeline Scan ──────────────────────────────────────────
+pipeline-scan:
+  stage: scan
+  script:
+    - pip install semgrep
+    - cq-pipeline scan --all --format all --log-level INFO
+  artifacts:
+    paths:
+      - reports/
+    expire_in: 30 days
+    when: always
+
+# ─── Dependency Audit ────────────────────────────────────────────
+dependency-audit:
+  stage: scan
+  script:
+    - pip-audit --format json --output reports/pip-audit.json || true
+  artifacts:
+    paths:
+      - reports/pip-audit.json
+    expire_in: 30 days
+  allow_failure: true
+
+# ─── Generate Report ─────────────────────────────────────────────
+generate-report:
+  stage: report
+  script:
+    - cq-pipeline report --format html
+  artifacts:
+    paths:
+      - reports/
+    expire_in: 90 days
+  when: always
+  needs:
+    - pipeline-scan

@@ -1,0 +1,55 @@
+# .gitignore for CQ Pipeline
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Linting/Type checking
+.mypy_cache/
+.ruff_cache/
+
+# Reports (generated)
+reports/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Database
+*.db
+*.sqlite3
+
+# Secrets
+*.pem
+*.key
+*.p12
+*.pfx
+.secrets.baseline
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,101 @@
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CQ Pipeline — Quality Gate Thresholds
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# These thresholds determine whether a commit is allowed or blocked.
+# Adjust per your organization's risk tolerance.
+
+# ─── Severity-Based Gate ─────────────────────────────────────────────
+# Actions per severity: "block", "warn", "info", "ignore"
+severity_actions:
+  critical: "block"    # Always block on critical findings
+  high: "block"        # Block on high severity findings
+  medium: "warn"       # Warn but allow commit
+  low: "info"          # Informational only
+  info: "ignore"       # Completely ignored in gate evaluation
+
+# ─── Maximum Finding Counts ──────────────────────────────────────────
+# Maximum number of findings per severity before blocking.
+# Set to -1 for unlimited (rely on severity_actions instead).
+max_findings:
+  critical: 0          # Zero tolerance for critical
+  high: 0              # Zero tolerance for high
+  medium: 20           # Allow up to 20 medium findings
+  low: -1              # Unlimited low findings
+  total: 50            # Max total findings across all severities
+
+# ─── Secret Detection Gate ───────────────────────────────────────────
+secrets:
+  # Zero tolerance for detected secrets — always block
+  max_secrets: 0
+  # Block on high-entropy strings (may have false positives)
+  block_on_entropy: false
+
+# ─── Linting Gate ────────────────────────────────────────────────────
+linting:
+  # Minimum pylint score (0.0 - 10.0)
+  min_pylint_score: 7.0
+  # Maximum number of linting errors before blocking
+  max_lint_errors: 10
+  # Maximum number of linting warnings before blocking (-1 = unlimited)
+  max_lint_warnings: -1
+  # Block if code is not formatted (Black)
+  block_on_formatting: false
+
+# ─── Code Quality Gate ───────────────────────────────────────────────
+quality:
+  # Maximum cyclomatic complexity per function (McCabe)
+  max_cyclomatic_complexity: 15
+  # Maximum function/method length in lines
+  max_function_lines: 100
+  # Maximum file length in lines
+  max_file_lines: 1000
+  # Minimum maintainability index (Radon: A=100, F=0)
+  min_maintainability_index: 20
+
+# ─── File Gate ───────────────────────────────────────────────────────
+files:
+  # Maximum file size in bytes (default: 2MB)
+  max_file_size_bytes: 2097152
+  # Block if .env files are staged
+  block_env_files: true
+  # Block if debug statements found
+  block_debug_statements: true
+  # File patterns to always block
+  blocked_patterns:
+    - "*.pem"
+    - "*.key"
+    - "*.p12"
+    - "*.pfx"
+    - "*.jks"
+    - "id_rsa"
+    - "id_dsa"
+    - "id_ecdsa"
+    - "id_ed25519"
+
+# ─── Dependency Gate ─────────────────────────────────────────────────
+dependencies:
+  # Block on known CVEs with CVSS >= this score (0.0 - 10.0)
+  min_cvss_to_block: 7.0
+  # Block if any dependency has a known exploit
+  block_on_exploit: true
+  # Maximum number of vulnerable dependencies
+  max_vulnerable_deps: 0
+
+# ─── SAST Gate ───────────────────────────────────────────────────────
+sast:
+  # Block on these CWE categories (Common Weakness Enumeration)
+  block_on_cwe:
+    - "CWE-78"   # OS Command Injection
+    - "CWE-89"   # SQL Injection
+    - "CWE-94"   # Code Injection
+    - "CWE-502"  # Deserialization of Untrusted Data
+    - "CWE-798"  # Hard-coded Credentials
+  # Maximum SAST findings before blocking (-1 = rely on severity)
+  max_sast_findings: -1
+
+# ─── Type Checking Gate ─────────────────────────────────────────────
+type_checking:
+  # Maximum number of type errors
+  max_type_errors: 10
+  # Block on missing type annotations
+  block_on_missing_types: false

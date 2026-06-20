@@ -1,0 +1,151 @@
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CQ Pipeline — Master Configuration
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# This file controls the pipeline's behavior. Override any setting with
+# environment variables using the CQ_ prefix (e.g., CQ_PIPELINE__TIMEOUT=120).
+
+pipeline:
+  # Display name for reports
+  name: "Code Quality Pipeline"
+  version: "1.0.0"
+
+  # Global timeout for the entire pipeline run (seconds)
+  timeout: 120
+
+  # Maximum number of scanners to run concurrently
+  parallel_workers: 4
+
+  # Fail the pipeline if any scanner crashes (vs. skip and warn)
+  fail_on_scanner_error: false
+
+  # Whether to scan only staged files (pre-commit) or all files
+  # Overridden by CLI flags: --staged, --all
+  default_scan_mode: "staged"
+
+  # Report output directory (relative to project root)
+  report_dir: "reports"
+
+  # Log level: DEBUG, INFO, WARNING, ERROR
+  log_level: "INFO"
+
+# ─── Scanner Configuration ───────────────────────────────────────────
+# Each scanner can be enabled/disabled independently.
+# Per-scanner timeout defaults to the global timeout if not set.
+
+scanners:
+  secrets:
+    enabled: true
+    timeout: 30
+    tools:
+      gitleaks:
+        enabled: true
+        config_path: ""  # Use default gitleaks config if empty
+      detect_secrets:
+        enabled: true
+        baseline_file: ".secrets.baseline"
+      trufflehog:
+        enabled: false  # Slow — enable in CI/CD only
+        scan_history: false
+
+  linting:
+    enabled: true
+    timeout: 60
+    tools:
+      ruff:
+        enabled: true
+      black:
+        enabled: true
+        check_only: true  # Don't auto-format, just report
+      pylint:
+        enabled: true
+        min_score: 8.0
+      flake8:
+        enabled: false  # Ruff covers flake8 rules
+      eslint:
+        enabled: true
+
+  sast:
+    enabled: true
+    timeout: 60
+    tools:
+      semgrep:
+        enabled: true
+        config: "auto"  # "auto" uses community rules
+        custom_rules_dir: ""
+      bandit:
+        enabled: true
+        severity_level: "medium"  # low, medium, high
+        confidence_level: "medium"
+
+  dependencies:
+    enabled: true
+    timeout: 60
+    tools:
+      pip_audit:
+        enabled: true
+      safety:
+        enabled: true
+
+  quality:
+    enabled: true
+    timeout: 30
+    tools:
+      radon:
+        enabled: true
+
+  files:
+    enabled: true
+    timeout: 10
+
+  type_checking:
+    enabled: false  # Disable by default — can be slow
+    timeout: 60
+    tools:
+      mypy:
+        enabled: true
+        strict: false
+
+# ─── Language Detection ──────────────────────────────────────────────
+# Which file extensions to scan per language.
+
+languages:
+  python:
+    extensions: [".py", ".pyw"]
+    enabled: true
+  javascript:
+    extensions: [".js", ".jsx", ".mjs"]
+    enabled: true
+  typescript:
+    extensions: [".ts", ".tsx"]
+    enabled: true
+  go:
+    extensions: [".go"]
+    enabled: false
+  java:
+    extensions: [".java"]
+    enabled: false
+
+# ─── API Integration ─────────────────────────────────────────────────
+# Optional: send scan results to the FastAPI dashboard.
+
+api:
+  enabled: false
+  base_url: "http://localhost:8050"
+  endpoint: "/api/v1/scans"
+  timeout: 10
+  # API key for authentication (use env var CQ_API__API_KEY)
+  api_key: ""
+
+# ─── Notifications ───────────────────────────────────────────────────
+# Optional: send notifications on scan failures.
+
+notifications:
+  enabled: false
+  slack:
+    enabled: false
+    webhook_url: ""
+  email:
+    enabled: false
+    smtp_host: ""
+    smtp_port: 587
+    recipients: []

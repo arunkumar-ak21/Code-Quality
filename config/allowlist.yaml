@@ -1,0 +1,66 @@
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CQ Pipeline — Allowlist (False Positive Management)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Use this file to suppress known false positives. Each entry must include
+# a justification so future reviewers understand why it was allowlisted.
+
+# ─── File-Level Allowlist ────────────────────────────────────────────
+# Entire files excluded from scanning.
+files:
+  - path: "tests/fixtures/fake_secrets.py"
+    reason: "Test fixtures containing dummy/fake secrets for unit tests"
+    approved_by: "security-team"
+    approved_date: "2024-01-01"
+
+  - path: "docs/examples/config_sample.yaml"
+    reason: "Documentation sample with placeholder values"
+    approved_by: "security-team"
+    approved_date: "2024-01-01"
+
+  - path: "tests/test_scanners/test_secret_scanner.py"
+    reason: "Test file containing intentional secret patterns for validation"
+    approved_by: "security-team"
+    approved_date: "2024-01-01"
+
+# ─── Pattern-Level Allowlist ─────────────────────────────────────────
+# Specific pattern matches to ignore.
+patterns:
+  - pattern: "AKIAIOSFODNN7EXAMPLE"
+    reason: "AWS documentation example key (not a real key)"
+    rule_id: "aws-access-key"
+
+  - pattern: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+    reason: "AWS documentation example secret (not a real secret)"
+    rule_id: "aws-secret-key"
+
+# ─── Rule-Level Allowlist ────────────────────────────────────────────
+# Disable specific rules globally.
+rules:
+  # - rule_id: "stripe-publishable"
+  #   reason: "Publishable keys are safe to commit"
+  #   approved_by: "security-team"
+
+# ─── Path Pattern Allowlist ──────────────────────────────────────────
+# Glob patterns for paths to exclude from all scanning.
+path_patterns:
+  - "**/*.test.py"        # Allow patterns in test files (with caution)
+  - "**/fixtures/**"      # Test fixtures directory
+  - "**/mock_data/**"     # Mock data directory
+  - "vendor/**"           # Vendored dependencies
+  - "node_modules/**"     # Node.js dependencies
+  - ".git/**"             # Git internals
+  - "**/*.min.js"         # Minified JS (unreadable, can't lint)
+  - "**/*.min.css"        # Minified CSS
+
+# ─── Scanner-Level Allowlist ─────────────────────────────────────────
+# Suppress specific scanner findings by fingerprint.
+findings:
+  # Example:
+  # - scanner: "bandit"
+  #   rule_id: "B101"
+  #   file: "tests/**"
+  #   reason: "assert statements are expected in test files"
+  - scanner: "bandit"
+    rule_id: "B101"
+    file: "tests/**"
+    reason: "assert statements are standard in pytest test files"
